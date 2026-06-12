@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nostr Card — Build your Nostr profile card</title>
+  <meta name="description" content="Create a beautiful Nostr profile card. Export as a valid kind:0 metadata event ready to publish to any relay." />
+  <meta property="og:title" content="Nostr Card" />
+  <meta property="og:description" content="Build and export your Nostr profile card" />
+  <meta name="theme-color" content="#1a1025" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0a1a;
+      --surface:   #17112a;
+      --surface2:  #211940;
+      --border:    #2e2550;
+      --border2:   #4a3d80;
+      --text:      #e8e0ff;
+      --muted:     #8878b8;
+      --accent:    #a78bfa;
+      --accent2:   #7c3aed;
+      --gold:      #f59e0b;
+      --mono:      'Space Mono', monospace;
+      --sans:      'Space Grotesk', sans-serif;
+      --radius:    12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+    }
+    .logo {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo svg { width: 22px; height: 22px; }
+    .header-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #e8e0ff 30%, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .builder {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 760px) {
+      .builder { grid-template-columns: 1fr; }
+      main { padding: 32px 20px 60px; }
+      header { padding: 16px 20px; }
+    }
+
+    /* ── Card preview ── */
+    .preview-wrap { position: sticky; top: 88px; }
+    .preview-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .nostr-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-banner {
+      height: 88px;
+      background: linear-gradient(135deg, #4c1d95, #7c3aed);
+      position: relative;
+    }
+    .card-banner.teal    { background: linear-gradient(135deg, #064e3b, #059669); }
+    .card-banner.orange  { background: linear-gradient(135deg, #7c2d12, #ea580c); }
+    .card-banner.pink    { background: linear-gradient(135deg, #831843, #db2777); }
+    .card-banner.blue    { background: linear-gradient(135deg, #1e3a5f, #2563eb); }
+    .card-banner.gold    { background: linear-gradient(135deg, #78350f, #d97706); }
+
+    .card-avatar {
+      position: absolute;
+      bottom: -30px;
+      left: 18px;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 3px solid var(--surface);
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      overflow: hidden;
+      font-family: var(--sans);
+    }
+    .card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .card-verified {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(0,0,0,0.45);
+      border-radius: 20px;
+      padding: 3px 8px;
+      font-size: 11px;
+      color: #86efac;
+      font-family: var(--mono);
+      display: none;
+    }
+    .card-verified.show { display: block; }
+
+    .card-body {
+      padding: 44px 18px 18px;
+    }
+    .card-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .card-handle {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      margin-top: 2px;
+      margin-bottom: 10px;
+    }
+    .card-bio {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      min-height: 0;
+    }
+    .card-npub {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      word-break: break-all;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .card-npub:hover { border-color: var(--accent); }
+    .card-npub.copied { border-color: #4ade80; color: #4ade80; }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--accent);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .btn-zap {
+      flex: 1;
+      padding: 8px 0;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--gold);
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.15s;
+    }
+    .btn-zap:hover { background: rgba(245,158,11,0.08); }
+    .btn-follow {
+      flex: 2;
+      padding: 8px 0;
+      background: var(--accent2);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-follow:hover { background: #6d28d9; }
+
+    .card-stats {
+      display: flex;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      gap: 0;
+    }
+    .stat {
+      flex: 1;
+      text-align: center;
+    }
+    .stat:not(:last-child) { border-right: 1px solid var(--border); }
+    .stat-num { font-size: 15px; font-weight: 600; color: var(--text); }
+    .stat-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+    /* ── Links row ── */
+    .card-links {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .card-link {
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .card-link:hover { color: var(--accent); }
+    .card-link svg { width: 12px; height: 12px; }
+
+    /* ── Form ── */
+    .form-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .form-section h2 {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: var(--mono);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+    .field input,
+    .field textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus,
+    .field textarea:focus { border-color: var(--accent); }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--muted); opacity: 0.6; }
+    .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+    .field input[type="color"] {
+      padding: 3px 6px;
+      height: 36px;
+      cursor: pointer;
+    }
+
+    .color-picker-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .swatch:hover { transform: scale(1.1); }
+    .swatch.active { border-color: var(--text); transform: scale(1.1); }
+
+    /* ── Export section ── */
+    .export-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .export-section h2 {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: var(--mono);
+      margin-bottom: 16px;
+    }
+    .export-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-export {
+      flex: 1;
+      min-width: 140px;
+      padding: 11px 16px;
+      border-radius: var(--radius-sm);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: none;
+    }
+    .btn-export:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--accent2);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    .json-preview {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      overflow-x: auto;
+      white-space: pre;
+      margin-top: 16px;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+    }
+    .json-preview.show { display: block; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #4ade80;
+      color: #052e16;
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+    }
+    footer p {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="11" cy="11" r="10" stroke="#a78bfa" stroke-width="1.5"/>
+      <circle cx="11" cy="9" r="3.5" stroke="#a78bfa" stroke-width="1.5"/>
+      <path d="M4.5 18c1-3 3.5-5 6.5-5s5.5 2 6.5 5" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    nostr card
+  </div>
+  <span class="header-tag">kind:0 builder</span>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Your Nostr identity,<br>beautifully composed</h1>
+    <p>Build a profile card and export a valid kind:0 metadata event, ready to publish to any relay.</p>
+  </div>
+
+  <div class="builder">
+
+    <!-- ── Preview ── -->
+    <div class="preview-wrap">
+      <p class="preview-label">Live preview</p>
+      <div class="nostr-card" id="card">
+        <div class="card-banner" id="cardBanner">
+          <div class="card-avatar" id="cardAvatar">?</div>
+          <div class="card-verified" id="cardVerified">✓ NIP-05</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name" id="cardName">Your Name</div>
+          <div class="card-handle" id="cardHandle">@handle</div>
+          <div class="card-bio" id="cardBio"></div>
+          <div class="card-links" id="cardLinks"></div>
+          <div class="card-npub" id="cardNpub" title="Click to copy" onclick="copyNpub()">npub1… paste your public key below</div>
+          <div class="card-tags" id="cardTags"></div>
+          <div class="card-actions">
+            <button class="btn-zap">⚡ Zap</button>
+            <button class="btn-follow">Follow</button>
+          </div>
+          <div class="card-stats">
+            <div class="stat"><div class="stat-num">—</div><div class="stat-label">followers</div></div>
+            <div class="stat"><div class="stat-num">—</div><div class="stat-label">following</div></div>
+            <div class="stat"><div class="stat-num">—</div><div class="stat-label">notes</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Form ── -->
+    <div>
+      <div class="form-section">
+        <h2>Identity</h2>
+        <div class="field">
+          <label>Display name</label>
+          <input type="text" id="fName" placeholder="Satoshi Nakamoto" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>NIP-05 handle (e.g. you@yourdomain.com)</label>
+          <input type="text" id="fNip05" placeholder="satoshi@bitcoin.org" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>npub (bech32 public key)</label>
+          <input type="text" id="fNpub" placeholder="npub1qqqq…" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>About</label>
+          <textarea id="fAbout" placeholder="Bitcoin creator. Building a peer-to-peer electronic cash system." oninput="update()"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Media &amp; links</h2>
+        <div class="field">
+          <label>Picture URL</label>
+          <input type="url" id="fPicture" placeholder="https://nostr.build/…/avatar.jpg" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>Banner image URL</label>
+          <input type="url" id="fBanner" placeholder="https://nostr.build/…/banner.jpg" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>Website</label>
+          <input type="url" id="fWebsite" placeholder="https://yoursite.com" oninput="update()" />
+        </div>
+        <div class="field">
+          <label>Lightning address (lud16)</label>
+          <input type="text" id="fLnurl" placeholder="you@walletofsatoshi.com" oninput="update()" />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Style</h2>
+        <div class="field">
+          <label>Banner accent (if no banner image)</label>
+          <div class="color-picker-row">
+            <div class="swatch active" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)" data-cls="" onclick="setBanner(this,'')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#064e3b,#059669)" data-cls="teal" onclick="setBanner(this,'teal')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#7c2d12,#ea580c)" data-cls="orange" onclick="setBanner(this,'orange')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#831843,#db2777)" data-cls="pink" onclick="setBanner(this,'pink')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#1e3a5f,#2563eb)" data-cls="blue" onclick="setBanner(this,'blue')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#78350f,#d97706)" data-cls="gold" onclick="setBanner(this,'gold')"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Interests (comma-separated)</label>
+          <input type="text" id="fInterests" placeholder="bitcoin, nostr, privacy, freedom" oninput="update()" />
+        </div>
+      </div>
+
+      <div class="export-section">
+        <h2>Export</h2>
+        <div class="export-actions">
+          <button class="btn-export btn-primary" onclick="downloadJSON()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download kind:0 JSON
+          </button>
+          <button class="btn-export btn-secondary" onclick="togglePreviewJSON()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Preview JSON
+          </button>
+          <button class="btn-export btn-secondary" onclick="copyNstrpub()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy for nak
+          </button>
+        </div>
+        <pre class="json-preview" id="jsonPreview"></pre>
+      </div>
+    </div>
+
+  </div><!-- /.builder -->
+</main>
+
+<footer>
+  <p>Built for the Nostr community · <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noopener">nostr protocol</a> · kind:0</p>
+  <p>Open source · free forever</p>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let bannerClass = '';
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+
+  function update() {
+    const name     = val('fName');
+    const nip05    = val('fNip05');
+    const npub     = val('fNpub');
+    const about    = val('fAbout');
+    const picture  = val('fPicture');
+    const banner   = val('fBanner');
+    const website  = val('fWebsite');
+    const lnurl    = val('fLnurl');
+    const interests = val('fInterests');
+
+    // name
+    document.getElementById('cardName').textContent = name || 'Your Name';
+
+    // handle
+    if (nip05) {
+      document.getElementById('cardHandle').textContent = nip05.includes('@') ? nip05 : '@' + nip05;
+      document.getElementById('cardVerified').classList.add('show');
+    } else {
+      document.getElementById('cardHandle').textContent = '@handle';
+      document.getElementById('cardVerified').classList.remove('show');
+    }
+
+    // bio
+    document.getElementById('cardBio').textContent = about;
+
+    // npub
+    const npubEl = document.getElementById('cardNpub');
+    npubEl.textContent = npub || 'npub1… paste your public key below';
+    npubEl.classList.remove('copied');
+
+    // avatar
+    const avatarEl = document.getElementById('cardAvatar');
+    if (picture) {
+      const img = new Image();
+      img.onload = () => {
+        avatarEl.innerHTML = '';
+        const el = document.createElement('img');
+        el.src = picture; el.alt = name || 'avatar';
+        avatarEl.appendChild(el);
+      };
+      img.onerror = () => {
+        const initials = name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
+        avatarEl.textContent = initials;
+      };
+      img.src = picture;
+    } else {
+      const initials = name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
+      avatarEl.textContent = initials;
+    }
+
+    // banner image override
+    const bannerEl = document.getElementById('cardBanner');
+    if (banner) {
+      bannerEl.style.backgroundImage = `url(${banner})`;
+      bannerEl.style.backgroundSize = 'cover';
+      bannerEl.style.backgroundPosition = 'center';
+    } else {
+      bannerEl.style.backgroundImage = '';
+      bannerEl.style.backgroundSize = '';
+      bannerEl.className = 'card-banner' + (bannerClass ? ' ' + bannerClass : '');
+    }
+
+    // links
+    const linksEl = document.getElementById('cardLinks');
+    linksEl.innerHTML = '';
+    if (website) {
+      const a = document.createElement('a');
+      a.className = 'card-link'; a.href = '#'; a.textContent = '🌐 ' + website.replace(/^https?:\/\//, '');
+      linksEl.appendChild(a);
+    }
+    if (lnurl) {
+      const a = document.createElement('a');
+      a.className = 'card-link'; a.href = '#'; a.textContent = '⚡ ' + lnurl;
+      linksEl.appendChild(a);
+    }
+
+    // tags
+    const tagsEl = document.getElementById('cardTags');
+    tagsEl.innerHTML = '';
+    if (interests) {
+      interests.split(',').map(t=>t.trim()).filter(Boolean).slice(0,8).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'tag'; span.textContent = '#' + t;
+        tagsEl.appendChild(span);
+      });
+    }
+
+    // refresh json preview if open
+    if (document.getElementById('jsonPreview').classList.contains('show')) {
+      document.getElementById('jsonPreview').textContent = buildJSON(true);
+    }
+  }
+
+  function setBanner(el, cls) {
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    bannerClass = cls;
+    const bannerEl = document.getElementById('cardBanner');
+    if (!val('fBanner')) {
+      bannerEl.style.backgroundImage = '';
+      bannerEl.className = 'card-banner' + (cls ? ' ' + cls : '');
+    }
+  }
+
+  function buildContentObj() {
+    const obj = {};
+    const name    = val('fName');
+    const nip05   = val('fNip05');
+    const npub    = val('fNpub');
+    const about   = val('fAbout');
+    const picture = val('fPicture');
+    const banner  = val('fBanner');
+    const website = val('fWebsite');
+    const lnurl   = val('fLnurl');
+    const interests = val('fInterests');
+
+    if (name)     { obj.name = name; obj.display_name = name; }
+    if (nip05)    obj.nip05 = nip05;
+    if (about)    obj.about = about;
+    if (picture)  obj.picture = picture;
+    if (banner)   obj.banner = banner;
+    if (website)  obj.website = website;
+    if (lnurl)    obj.lud16 = lnurl;
+    if (interests) obj.interests = interests;
+    return obj;
+  }
+
+  function buildJSON(pretty) {
+    const content = buildContentObj();
+    const npub = val('fNpub');
+    const event = {
+      kind: 0,
+      pubkey: npub || '<your-hex-pubkey>',
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [],
+      content: JSON.stringify(content),
+    };
+    return pretty ? JSON.stringify(event, null, 2) : JSON.stringify(event);
+  }
+
+  function downloadJSON() {
+    const blob = new Blob([buildJSON(true)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'nostr-kind0.json';
+    a.click();
+    showToast('kind:0 JSON downloaded ✓');
+  }
+
+  function togglePreviewJSON() {
+    const el = document.getElementById('jsonPreview');
+    if (el.classList.contains('show')) {
+      el.classList.remove('show');
+    } else {
+      el.textContent = buildJSON(true);
+      el.classList.add('show');
+    }
+  }
+
+  function copyNpub() {
+    const npub = val('fNpub');
+    if (!npub) return;
+    navigator.clipboard.writeText(npub).then(() => {
+      document.getElementById('cardNpub').classList.add('copied');
+      showToast('npub copied ✓');
+      setTimeout(() => document.getElementById('cardNpub').classList.remove('copied'), 2000);
+    });
+  }
+
+  function copyNstrpub() {
+    const content = buildContentObj();
+    const cmd = `nak event --kind 0 --content '${JSON.stringify(content).replace(/'/g, "\\'")}' wss://relay.damus.io wss://relay.nostr.band`;
+    navigator.clipboard.writeText(cmd).then(() => showToast('nak command copied ✓'));
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>
