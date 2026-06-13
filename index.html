@@ -7,10 +7,20 @@
   <meta name="description" content="Create a beautiful Nostr profile card. Export as a valid kind:0 metadata event ready to publish to any relay." />
   <meta property="og:title" content="Nostr Card" />
   <meta property="og:description" content="Build and export your Nostr profile card" />
-  <meta name="theme-color" content="#1a1025" />
+  <meta name="theme-color" content="#7c3aed" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nostr Card" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -40,7 +50,6 @@
       min-height: 100vh;
     }
 
-    /* ── Header ── */
     header {
       display: flex;
       align-items: center;
@@ -72,7 +81,6 @@
       border-radius: 20px;
     }
 
-    /* ── Layout ── */
     main {
       max-width: 1100px;
       margin: 0 auto;
@@ -113,14 +121,14 @@
     }
 
     /* ── Card preview ── */
-    .preview-wrap { position: sticky; top: 88px; }
+    .preview-wrap { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
     .preview-label {
       font-family: var(--mono);
       font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 12px;
+      margin-bottom: 4px;
     }
 
     .nostr-card {
@@ -174,29 +182,10 @@
     }
     .card-verified.show { display: block; }
 
-    .card-body {
-      padding: 44px 18px 18px;
-    }
-    .card-name {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.02em;
-    }
-    .card-handle {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--accent);
-      margin-top: 2px;
-      margin-bottom: 10px;
-    }
-    .card-bio {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-      margin-bottom: 12px;
-      min-height: 0;
-    }
+    .card-body { padding: 44px 18px 18px; }
+    .card-name { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+    .card-handle { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 2px; margin-bottom: 10px; }
+    .card-bio { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
     .card-npub {
       font-family: var(--mono);
       font-size: 9.5px;
@@ -213,12 +202,7 @@
     .card-npub:hover { border-color: var(--accent); }
     .card-npub.copied { border-color: #4ade80; color: #4ade80; }
 
-    .card-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 16px;
-    }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
     .tag {
       font-family: var(--mono);
       font-size: 10px;
@@ -229,11 +213,7 @@
       color: var(--accent);
     }
 
-    .card-actions {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
+    .card-actions { display: flex; gap: 8px; margin-bottom: 16px; }
     .btn-zap {
       flex: 1;
       padding: 8px 0;
@@ -245,10 +225,6 @@
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
       transition: background 0.15s;
     }
     .btn-zap:hover { background: rgba(245,158,11,0.08); }
@@ -267,37 +243,88 @@
     }
     .btn-follow:hover { background: #6d28d9; }
 
-    .card-stats {
-      display: flex;
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      gap: 0;
-    }
-    .stat {
-      flex: 1;
-      text-align: center;
-    }
+    .card-stats { display: flex; border-top: 1px solid var(--border); padding-top: 14px; }
+    .stat { flex: 1; text-align: center; }
     .stat:not(:last-child) { border-right: 1px solid var(--border); }
     .stat-num { font-size: 15px; font-weight: 600; color: var(--text); }
     .stat-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
 
-    /* ── Links row ── */
-    .card-links {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
+    .card-links { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .card-link { font-size: 11px; color: var(--muted); text-decoration: none; }
+    .card-link:hover { color: var(--accent); }
+
+    /* ── QR Panel ── */
+    .qr-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: none;
     }
-    .card-link {
-      font-size: 11px;
-      color: var(--muted);
-      text-decoration: none;
+    .qr-panel.show { display: block; }
+    .qr-panel-header {
       display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: space-between;
+      margin-bottom: 14px;
     }
-    .card-link:hover { color: var(--accent); }
-    .card-link svg { width: 12px; height: 12px; }
+    .qr-panel-header span {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .qr-tabs { display: flex; gap: 6px; }
+    .qr-tab {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .qr-tab.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+    .qr-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #qrCanvas {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      width: 160px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #qrCanvas canvas, #qrCanvas img { width: 140px !important; height: 140px !important; }
+    .qr-value {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      text-align: center;
+      word-break: break-all;
+      max-width: 200px;
+    }
+    .btn-qr-download {
+      font-family: var(--sans);
+      font-size: 12px;
+      padding: 6px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-qr-download:hover { background: var(--border); }
 
     /* ── Form ── */
     .form-section {
@@ -318,19 +345,10 @@
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
-    .field {
-      margin-bottom: 16px;
-    }
+    .field { margin-bottom: 16px; }
     .field:last-child { margin-bottom: 0; }
-    .field label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      font-family: var(--mono);
-    }
-    .field input,
-    .field textarea {
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+    .field input, .field textarea {
       width: 100%;
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -342,27 +360,13 @@
       outline: none;
       transition: border-color 0.15s;
     }
-    .field input:focus,
-    .field textarea:focus { border-color: var(--accent); }
-    .field input::placeholder,
-    .field textarea::placeholder { color: var(--muted); opacity: 0.6; }
+    .field input:focus, .field textarea:focus { border-color: var(--accent); }
+    .field input::placeholder, .field textarea::placeholder { color: var(--muted); opacity: 0.6; }
     .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 
-    .field input[type="color"] {
-      padding: 3px 6px;
-      height: 36px;
-      cursor: pointer;
-    }
-
-    .color-picker-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+    .color-picker-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .swatch {
-      width: 30px;
-      height: 30px;
+      width: 30px; height: 30px;
       border-radius: 50%;
       cursor: pointer;
       border: 2px solid transparent;
@@ -387,18 +391,16 @@
       font-family: var(--mono);
       margin-bottom: 16px;
     }
-    .export-actions {
-      display: flex;
+    .export-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
-      flex-wrap: wrap;
     }
     .btn-export {
-      flex: 1;
-      min-width: 140px;
-      padding: 11px 16px;
+      padding: 11px 14px;
       border-radius: var(--radius-sm);
       font-family: var(--sans);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       transition: background 0.15s, transform 0.1s;
@@ -409,17 +411,11 @@
       border: none;
     }
     .btn-export:active { transform: scale(0.98); }
-    .btn-primary {
-      background: var(--accent2);
-      color: #fff;
-    }
+    .btn-primary { background: var(--accent2); color: #fff; }
     .btn-primary:hover { background: #6d28d9; }
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border2);
-    }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
     .btn-secondary:hover { background: var(--border); }
+    .btn-full { grid-column: 1 / -1; }
 
     .json-preview {
       background: var(--surface2);
@@ -455,25 +451,18 @@
       pointer-events: none;
       z-index: 100;
     }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ── Footer ── */
     footer {
       border-top: 1px solid var(--border);
       padding: 24px 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: gap;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    footer p {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-    }
+    footer p { font-family: var(--mono); font-size: 11px; color: var(--muted); }
     footer a { color: var(--accent); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
@@ -499,12 +488,12 @@
 <main>
   <div class="hero">
     <h1>Your Nostr identity,<br>beautifully composed</h1>
-    <p>Build a profile card and export a valid kind:0 metadata event, ready to publish to any relay.</p>
+    <p>Build a profile card, generate a QR code, and export a valid kind:0 event ready to publish to any relay.</p>
   </div>
 
   <div class="builder">
 
-    <!-- ── Preview ── -->
+    <!-- ── Preview col ── -->
     <div class="preview-wrap">
       <p class="preview-label">Live preview</p>
       <div class="nostr-card" id="card">
@@ -530,9 +519,26 @@
           </div>
         </div>
       </div>
+
+      <!-- ── QR Panel ── -->
+      <div class="qr-panel" id="qrPanel">
+        <div class="qr-panel-header">
+          <span>QR Code</span>
+          <div class="qr-tabs">
+            <button class="qr-tab active" onclick="setQRMode('npub',this)">npub</button>
+            <button class="qr-tab" onclick="setQRMode('nprofile',this)">nprofile</button>
+            <button class="qr-tab" onclick="setQRMode('lnurl',this)">⚡ lnurl</button>
+          </div>
+        </div>
+        <div class="qr-display">
+          <div id="qrCanvas"></div>
+          <div class="qr-value" id="qrValue"></div>
+          <button class="btn-qr-download" onclick="downloadQR()">Download PNG</button>
+        </div>
+      </div>
     </div>
 
-    <!-- ── Form ── -->
+    <!-- ── Form col ── -->
     <div>
       <div class="form-section">
         <h2>Identity</h2>
@@ -595,26 +601,49 @@
 
       <div class="export-section">
         <h2>Export</h2>
-        <div class="export-actions">
+        <div class="export-grid">
           <button class="btn-export btn-primary" onclick="downloadJSON()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download kind:0 JSON
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            kind:0 JSON
           </button>
-          <button class="btn-export btn-secondary" onclick="togglePreviewJSON()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Preview JSON
+          <button class="btn-export btn-secondary" onclick="toggleQR()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="4" height="4"/></svg>
+            QR code
+          </button>
+          <button class="btn-export btn-secondary" onclick="downloadShareableHTML()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Shareable HTML
           </button>
           <button class="btn-export btn-secondary" onclick="copyNstrpub()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             Copy for nak
+          </button>
+          <button class="btn-export btn-secondary btn-full" onclick="togglePreviewJSON()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Preview JSON
           </button>
         </div>
         <pre class="json-preview" id="jsonPreview"></pre>
       </div>
     </div>
 
-  </div><!-- /.builder -->
+  </div>
 </main>
+
+<!-- PWA install banner (shown by JS when browser fires beforeinstallprompt) -->
+<div id="installBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#17112a;border-top:1px solid #4a3d80;padding:14px 24px;align-items:center;justify-content:space-between;gap:12px;z-index:50;flex-wrap:wrap;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <svg width="28" height="28" viewBox="0 0 22 22" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="10" stroke="#a78bfa" stroke-width="1.5"/><circle cx="11" cy="9" r="3.5" stroke="#a78bfa" stroke-width="1.5"/><path d="M4.5 18c1-3 3.5-5 6.5-5s5.5 2 6.5 5" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <div>
+      <div style="font-size:14px;font-weight:600;color:#e8e0ff;">Add Nostr Card to Home Screen</div>
+      <div style="font-size:12px;color:#8878b8;">Works offline · No app store needed</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="installDismiss" style="padding:8px 14px;background:transparent;border:1px solid #2e2550;border-radius:8px;color:#8878b8;font-family:'Space Grotesk',sans-serif;font-size:13px;cursor:pointer;">Not now</button>
+    <button id="installBtn" style="padding:8px 18px;background:#7c3aed;border:none;border-radius:8px;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">Install</button>
+  </div>
+</div>
 
 <footer>
   <p>Built for the Nostr community · <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noopener">nostr protocol</a> · kind:0</p>
@@ -625,6 +654,8 @@
 
 <script>
   let bannerClass = '';
+  let qrMode = 'npub';
+  let qrInstance = null;
 
   function val(id) { return document.getElementById(id).value.trim(); }
 
@@ -639,10 +670,8 @@
     const lnurl    = val('fLnurl');
     const interests = val('fInterests');
 
-    // name
     document.getElementById('cardName').textContent = name || 'Your Name';
 
-    // handle
     if (nip05) {
       document.getElementById('cardHandle').textContent = nip05.includes('@') ? nip05 : '@' + nip05;
       document.getElementById('cardVerified').classList.add('show');
@@ -651,15 +680,12 @@
       document.getElementById('cardVerified').classList.remove('show');
     }
 
-    // bio
     document.getElementById('cardBio').textContent = about;
 
-    // npub
     const npubEl = document.getElementById('cardNpub');
     npubEl.textContent = npub || 'npub1… paste your public key below';
     npubEl.classList.remove('copied');
 
-    // avatar
     const avatarEl = document.getElementById('cardAvatar');
     if (picture) {
       const img = new Image();
@@ -670,16 +696,13 @@
         avatarEl.appendChild(el);
       };
       img.onerror = () => {
-        const initials = name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
-        avatarEl.textContent = initials;
+        avatarEl.textContent = initials(name);
       };
       img.src = picture;
     } else {
-      const initials = name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
-      avatarEl.textContent = initials;
+      avatarEl.textContent = initials(name);
     }
 
-    // banner image override
     const bannerEl = document.getElementById('cardBanner');
     if (banner) {
       bannerEl.style.backgroundImage = `url(${banner})`;
@@ -691,21 +714,21 @@
       bannerEl.className = 'card-banner' + (bannerClass ? ' ' + bannerClass : '');
     }
 
-    // links
     const linksEl = document.getElementById('cardLinks');
     linksEl.innerHTML = '';
     if (website) {
       const a = document.createElement('a');
-      a.className = 'card-link'; a.href = '#'; a.textContent = '🌐 ' + website.replace(/^https?:\/\//, '');
+      a.className = 'card-link'; a.href = '#';
+      a.textContent = '🌐 ' + website.replace(/^https?:\/\//, '');
       linksEl.appendChild(a);
     }
     if (lnurl) {
       const a = document.createElement('a');
-      a.className = 'card-link'; a.href = '#'; a.textContent = '⚡ ' + lnurl;
+      a.className = 'card-link'; a.href = '#';
+      a.textContent = '⚡ ' + lnurl;
       linksEl.appendChild(a);
     }
 
-    // tags
     const tagsEl = document.getElementById('cardTags');
     tagsEl.innerHTML = '';
     if (interests) {
@@ -716,10 +739,17 @@
       });
     }
 
-    // refresh json preview if open
     if (document.getElementById('jsonPreview').classList.contains('show')) {
       document.getElementById('jsonPreview').textContent = buildJSON(true);
     }
+
+    if (document.getElementById('qrPanel').classList.contains('show')) {
+      renderQR();
+    }
+  }
+
+  function initials(name) {
+    return name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
   }
 
   function setBanner(el, cls) {
@@ -737,7 +767,6 @@
     const obj = {};
     const name    = val('fName');
     const nip05   = val('fNip05');
-    const npub    = val('fNpub');
     const about   = val('fAbout');
     const picture = val('fPicture');
     const banner  = val('fBanner');
@@ -745,13 +774,13 @@
     const lnurl   = val('fLnurl');
     const interests = val('fInterests');
 
-    if (name)     { obj.name = name; obj.display_name = name; }
-    if (nip05)    obj.nip05 = nip05;
-    if (about)    obj.about = about;
-    if (picture)  obj.picture = picture;
-    if (banner)   obj.banner = banner;
-    if (website)  obj.website = website;
-    if (lnurl)    obj.lud16 = lnurl;
+    if (name)      { obj.name = name; obj.display_name = name; }
+    if (nip05)     obj.nip05 = nip05;
+    if (about)     obj.about = about;
+    if (picture)   obj.picture = picture;
+    if (banner)    obj.banner = banner;
+    if (website)   obj.website = website;
+    if (lnurl)     obj.lud16 = lnurl;
     if (interests) obj.interests = interests;
     return obj;
   }
@@ -780,12 +809,168 @@
 
   function togglePreviewJSON() {
     const el = document.getElementById('jsonPreview');
-    if (el.classList.contains('show')) {
-      el.classList.remove('show');
+    if (el.classList.contains('show')) { el.classList.remove('show'); }
+    else { el.textContent = buildJSON(true); el.classList.add('show'); }
+  }
+
+  /* ── QR ── */
+  function toggleQR() {
+    const panel = document.getElementById('qrPanel');
+    if (panel.classList.contains('show')) {
+      panel.classList.remove('show');
     } else {
-      el.textContent = buildJSON(true);
-      el.classList.add('show');
+      panel.classList.add('show');
+      renderQR();
     }
+  }
+
+  function setQRMode(mode, btn) {
+    qrMode = mode;
+    document.querySelectorAll('.qr-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderQR();
+  }
+
+  function getQRValue() {
+    const npub  = val('fNpub');
+    const lnurl = val('fLnurl');
+    const nip05 = val('fNip05');
+    if (qrMode === 'npub')     return npub  || 'npub1…';
+    if (qrMode === 'lnurl')    return lnurl ? 'lightning:' + lnurl : 'no lightning address set';
+    if (qrMode === 'nprofile') {
+      if (npub) return 'nostr:' + npub;
+      return 'npub1…';
+    }
+    return npub || 'npub1…';
+  }
+
+  function renderQR() {
+    const qrVal = getQRValue();
+    document.getElementById('qrValue').textContent = qrVal;
+    const container = document.getElementById('qrCanvas');
+    container.innerHTML = '';
+    try {
+      new QRCode(container, {
+        text: qrVal,
+        width: 140,
+        height: 140,
+        colorDark: '#0e0a1a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e) {
+      container.textContent = 'QR unavailable';
+    }
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector('#qrCanvas canvas');
+    if (!canvas) { showToast('Generate a QR first'); return; }
+    const a = document.createElement('a');
+    a.download = 'nostr-qr-' + qrMode + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    showToast('QR PNG downloaded ✓');
+  }
+
+  /* ── Shareable HTML ── */
+  function buildShareableHTML() {
+    const name     = val('fName') || 'Nostr User';
+    const nip05    = val('fNip05');
+    const npub     = val('fNpub');
+    const about    = val('fAbout');
+    const picture  = val('fPicture');
+    const banner   = val('fBanner');
+    const website  = val('fWebsite');
+    const lnurl    = val('fLnurl');
+    const interests = val('fInterests');
+
+    const bannerStyle = banner
+      ? `background-image:url('${banner}');background-size:cover;background-position:center;`
+      : bannerGradient();
+
+    const avatarHTML = picture
+      ? `<img src="${picture}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+      : `<span style="font-size:22px;font-weight:600;color:#a78bfa;">${initials(name)}</span>`;
+
+    const tagsHTML = interests
+      ? interests.split(',').map(t=>t.trim()).filter(Boolean).slice(0,8)
+          .map(t=>`<span style="font-family:monospace;font-size:10px;padding:3px 8px;border-radius:20px;background:#211940;border:1px solid #2e2550;color:#a78bfa;">#${t}</span>`).join('')
+      : '';
+
+    const linksHTML = [
+      website ? `<a href="${website}" style="font-size:12px;color:#8878b8;text-decoration:none;">🌐 ${website.replace(/^https?:\/\//,'')}</a>` : '',
+      lnurl   ? `<span style="font-size:12px;color:#8878b8;">⚡ ${lnurl}</span>` : ''
+    ].filter(Boolean).join('');
+
+    const nip05HTML = nip05
+      ? `<div style="font-family:monospace;font-size:12px;color:#a78bfa;margin:2px 0 10px;">${nip05} <span style="background:rgba(0,0,0,0.4);border-radius:20px;padding:2px 6px;font-size:10px;color:#86efac;">✓ NIP-05</span></div>`
+      : `<div style="font-family:monospace;font-size:12px;color:#a78bfa;margin:2px 0 10px;">@handle</div>`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name} — Nostr Profile</title>
+<meta name="description" content="${about || 'Nostr profile card'}">
+<meta property="og:title" content="${name}">
+<meta property="og:description" content="${about || ''}">
+${picture ? `<meta property="og:image" content="${picture}">` : ''}
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0e0a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;padding:20px;}
+</style>
+</head>
+<body>
+<div style="background:#17112a;border:1px solid #2e2550;border-radius:12px;overflow:hidden;width:100%;max-width:360px;">
+  <div style="height:88px;${bannerStyle}position:relative;">
+    <div style="position:absolute;bottom:-30px;left:18px;width:62px;height:62px;border-radius:50%;border:3px solid #17112a;background:#211940;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+      ${avatarHTML}
+    </div>
+  </div>
+  <div style="padding:44px 18px 18px;">
+    <div style="font-size:18px;font-weight:600;color:#e8e0ff;letter-spacing:-0.02em;">${name}</div>
+    ${nip05HTML}
+    ${about ? `<div style="font-size:13px;color:#8878b8;line-height:1.5;margin-bottom:12px;">${about}</div>` : ''}
+    ${linksHTML ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">${linksHTML}</div>` : ''}
+    ${npub ? `<div style="font-family:monospace;font-size:9.5px;color:#8878b8;background:#211940;border:1px solid #2e2550;border-radius:8px;padding:7px 10px;word-break:break-all;margin-bottom:14px;">${npub}</div>` : ''}
+    ${tagsHTML ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">${tagsHTML}</div>` : ''}
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button style="flex:1;padding:8px 0;background:transparent;border:1px solid #4a3d80;border-radius:8px;color:#f59e0b;font-size:13px;font-weight:500;cursor:pointer;">⚡ Zap</button>
+      <button style="flex:2;padding:8px 0;background:#7c3aed;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;cursor:pointer;">Follow</button>
+    </div>
+    <div style="border-top:1px solid #2e2550;padding-top:14px;display:flex;">
+      <div style="flex:1;text-align:center;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">followers</div></div>
+      <div style="flex:1;text-align:center;border-left:1px solid #2e2550;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">following</div></div>
+      <div style="flex:1;text-align:center;border-left:1px solid #2e2550;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">notes</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  function bannerGradient() {
+    const map = {
+      '':       'background:linear-gradient(135deg,#4c1d95,#7c3aed);',
+      'teal':   'background:linear-gradient(135deg,#064e3b,#059669);',
+      'orange': 'background:linear-gradient(135deg,#7c2d12,#ea580c);',
+      'pink':   'background:linear-gradient(135deg,#831843,#db2777);',
+      'blue':   'background:linear-gradient(135deg,#1e3a5f,#2563eb);',
+      'gold':   'background:linear-gradient(135deg,#78350f,#d97706);',
+    };
+    return map[bannerClass] || map[''];
+  }
+
+  function downloadShareableHTML() {
+    const html = buildShareableHTML();
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (val('fName') || 'nostr') + '-card.html';
+    a.click();
+    showToast('Shareable HTML downloaded ✓');
   }
 
   function copyNpub() {
@@ -800,7 +985,7 @@
 
   function copyNstrpub() {
     const content = buildContentObj();
-    const cmd = `nak event --kind 0 --content '${JSON.stringify(content).replace(/'/g, "\\'")}' wss://relay.damus.io wss://relay.nostr.band`;
+    const cmd = `nak event --kind 0 --content '${JSON.stringify(content).replace(/'/g,"\\'")}' wss://relay.damus.io wss://relay.nostr.band`;
     navigator.clipboard.writeText(cmd).then(() => showToast('nak command copied ✓'));
   }
 
@@ -810,6 +995,51 @@
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
+</script>
+
+<script>
+  // ── PWA: register service worker ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered', reg.scope))
+        .catch(err => console.warn('SW registration failed', err));
+    });
+  }
+
+  // ── PWA: install prompt banner ──
+  let deferredPrompt = null;
+  const installBanner = document.getElementById('installBanner');
+  const installBtn    = document.getElementById('installBtn');
+  const installDismiss = document.getElementById('installDismiss');
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBanner) installBanner.style.display = 'flex';
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBanner.style.display = 'none';
+      if (outcome === 'accepted') showToast('App installed ✓');
+    });
+  }
+
+  if (installDismiss) {
+    installDismiss.addEventListener('click', () => {
+      installBanner.style.display = 'none';
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    installBanner.style.display = 'none';
+    showToast('Nostr Card installed ✓');
+  });
 </script>
 </body>
 </html>
