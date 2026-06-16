@@ -8,495 +8,308 @@
   <meta property="og:title" content="Nostr Card" />
   <meta property="og:description" content="Build and export your Nostr profile card" />
   <meta name="theme-color" content="#7c3aed" />
-
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Nostr Card" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0e0a1a;
-      --surface:   #17112a;
-      --surface2:  #211940;
-      --border:    #2e2550;
-      --border2:   #4a3d80;
-      --text:      #e8e0ff;
-      --muted:     #8878b8;
-      --accent:    #a78bfa;
-      --accent2:   #7c3aed;
-      --gold:      #f59e0b;
-      --mono:      'Space Mono', monospace;
-      --sans:      'Space Grotesk', sans-serif;
-      --radius:    12px;
-      --radius-sm: 8px;
+      --bg:       #0e0a1a;
+      --surface:  #17112a;
+      --surface2: #211940;
+      --border:   #2e2550;
+      --border2:  #4a3d80;
+      --text:     #e8e0ff;
+      --muted:    #8878b8;
+      --accent:   #a78bfa;
+      --accent2:  #7c3aed;
+      --gold:     #f59e0b;
+      --green:    #4ade80;
+      --mono:     'Space Mono', monospace;
+      --sans:     'Space Grotesk', sans-serif;
+      --r:        12px;
+      --rs:       8px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:15px; line-height:1.6; min-height:100vh; }
+
+    /* ── Header ── */
+    header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--bg); position:sticky; top:0; z-index:20; }
+    .logo { font-size:16px; font-weight:600; color:var(--accent); display:flex; align-items:center; gap:7px; }
+    .logo svg { width:20px; height:20px; }
+    .header-tag { font-family:var(--mono); font-size:10px; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:3px 9px; border-radius:20px; }
+
+    /* ── Tabs (mobile preview toggle) ── */
+    .tab-bar { display:none; border-bottom:1px solid var(--border); background:var(--bg); position:sticky; top:49px; z-index:19; }
+    .tab-bar button { flex:1; padding:10px 0; background:transparent; border:none; color:var(--muted); font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; transition:color 0.15s,border-color 0.15s; }
+    .tab-bar button.active { color:var(--accent); border-bottom-color:var(--accent); }
+    @media(max-width:800px) {
+      .tab-bar { display:flex; }
+      .tab-pane { display:none; }
+      .tab-pane.active { display:block; }
     }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      font-size: 15px;
-      line-height: 1.6;
-      min-height: 100vh;
+    /* ── Layout ── */
+    main { max-width:1140px; margin:0 auto; padding:32px 20px 80px; }
+    .hero { text-align:center; margin-bottom:40px; }
+    .hero h1 { font-size:clamp(24px,4vw,42px); font-weight:600; letter-spacing:-0.03em; line-height:1.15; background:linear-gradient(135deg,#e8e0ff 30%,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:10px; }
+    .hero p { color:var(--muted); font-size:15px; max-width:460px; margin:0 auto; }
+
+    /* Desktop: side-by-side. Preview RIGHT so form is fully visible first */
+    .builder { display:grid; grid-template-columns:1fr 300px; gap:28px; align-items:start; }
+    .preview-col { position:sticky; top:64px; }
+
+    @media(max-width:800px) {
+      .builder { display:block; }
+      .preview-col, .form-col { width:100%; }
+      main { padding:16px 14px 80px; }
+      .hero { margin-bottom:0; display:none; }
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 32px;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: var(--bg);
-      z-index: 10;
-    }
-    .logo {
-      font-size: 17px;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .logo svg { width: 22px; height: 22px; }
-    .header-tag {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 20px;
-    }
+    /* ── Section box ── */
+    .box { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:20px; margin-bottom:14px; }
+    .box:last-child { margin-bottom:0; }
+    .box-title { font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
 
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 48px 32px 80px;
+    /* ── Fields ── */
+    .field { margin-bottom:13px; }
+    .field:last-child { margin-bottom:0; }
+    .field label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-family:var(--mono); }
+    .field input, .field textarea, .field select {
+      width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--rs);
+      padding:8px 11px; color:var(--text); font-family:var(--sans); font-size:14px; outline:none; transition:border-color 0.15s;
     }
-    .hero {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-    .hero h1 {
-      font-size: clamp(28px, 5vw, 48px);
-      font-weight: 600;
-      letter-spacing: -0.03em;
-      line-height: 1.15;
-      background: linear-gradient(135deg, #e8e0ff 30%, #a78bfa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 14px;
-    }
-    .hero p {
-      color: var(--muted);
-      font-size: 16px;
-      max-width: 480px;
-      margin: 0 auto;
-    }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color:var(--accent); }
+    .field input::placeholder, .field textarea::placeholder { color:var(--muted); opacity:0.55; }
+    .field textarea { resize:vertical; min-height:66px; line-height:1.5; }
+    .field select option { background:var(--surface2); }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media(max-width:480px) { .field-row { grid-template-columns:1fr; } }
 
-    .builder {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 32px;
-      align-items: start;
-    }
-    @media (max-width: 760px) {
-      .builder { grid-template-columns: 1fr; }
-      main { padding: 32px 20px 60px; }
-      header { padding: 16px 20px; }
-    }
+    /* ── Swatches ── */
+    .swatches { display:flex; gap:8px; flex-wrap:wrap; }
+    .swatch { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform 0.12s,border-color 0.12s; }
+    .swatch:hover { transform:scale(1.12); }
+    .swatch.active { border-color:var(--text); transform:scale(1.12); }
 
-    /* ── Card preview ── */
-    .preview-wrap { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
-    .preview-label {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
+    /* ── Payment QR section ── */
+    .pay-qr-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    @media(max-width:480px) { .pay-qr-grid { grid-template-columns:1fr; } }
+    .pay-qr-card {
+      background:var(--surface2); border:1px solid var(--border); border-radius:var(--rs);
+      padding:12px; display:flex; flex-direction:column; align-items:center; gap:8px;
     }
+    .pay-qr-label { font-family:var(--mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+    .pay-qr-canvas { background:#fff; border-radius:6px; padding:6px; width:100px; height:100px; display:flex; align-items:center; justify-content:center; }
+    .pay-qr-canvas canvas, .pay-qr-canvas img { width:88px !important; height:88px !important; }
+    .pay-qr-empty { font-size:11px; color:var(--muted); text-align:center; line-height:1.4; }
+    .btn-dl-qr { font-family:var(--sans); font-size:11px; padding:4px 10px; background:var(--surface); border:1px solid var(--border2); border-radius:20px; color:var(--text); cursor:pointer; transition:background 0.15s; }
+    .btn-dl-qr:hover { background:var(--border); }
 
-    .nostr-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .card-banner {
-      height: 88px;
-      background: linear-gradient(135deg, #4c1d95, #7c3aed);
-      position: relative;
-    }
-    .card-banner.teal    { background: linear-gradient(135deg, #064e3b, #059669); }
-    .card-banner.orange  { background: linear-gradient(135deg, #7c2d12, #ea580c); }
-    .card-banner.pink    { background: linear-gradient(135deg, #831843, #db2777); }
-    .card-banner.blue    { background: linear-gradient(135deg, #1e3a5f, #2563eb); }
-    .card-banner.gold    { background: linear-gradient(135deg, #78350f, #d97706); }
+    /* ── Nostr QR Panel ── */
+    .qr-panel { background:var(--surface2); border:1px solid var(--border); border-radius:var(--rs); padding:14px; margin-top:12px; display:none; }
+    .qr-panel.show { display:block; }
+    .qr-panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .qr-panel-head span { font-family:var(--mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; }
+    .qr-tabs { display:flex; gap:5px; }
+    .qr-tab { font-family:var(--mono); font-size:10px; padding:3px 8px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+    .qr-tab.active { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+    .qr-body { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    #qrCanvas { background:#fff; border-radius:7px; padding:8px; width:132px; height:132px; display:flex; align-items:center; justify-content:center; }
+    #qrCanvas canvas, #qrCanvas img { width:116px !important; height:116px !important; }
+    .qr-value { font-family:var(--mono); font-size:9px; color:var(--muted); text-align:center; word-break:break-all; max-width:220px; }
+    .btn-qr-dl { font-family:var(--sans); font-size:12px; padding:6px 14px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--rs); color:var(--text); cursor:pointer; }
+    .btn-qr-dl:hover { background:var(--border); }
 
-    .card-avatar {
-      position: absolute;
-      bottom: -30px;
-      left: 18px;
-      width: 62px;
-      height: 62px;
-      border-radius: 50%;
-      border: 3px solid var(--surface);
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      font-weight: 600;
-      color: var(--accent);
-      overflow: hidden;
-      font-family: var(--sans);
-    }
-    .card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    /* ── Card Preview ── */
+    .preview-label { font-family:var(--mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+    .nostr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+    .card-banner { height:80px; background:linear-gradient(135deg,#4c1d95,#7c3aed); position:relative; }
+    .card-banner.teal   { background:linear-gradient(135deg,#064e3b,#059669); }
+    .card-banner.orange { background:linear-gradient(135deg,#7c2d12,#ea580c); }
+    .card-banner.pink   { background:linear-gradient(135deg,#831843,#db2777); }
+    .card-banner.blue   { background:linear-gradient(135deg,#1e3a5f,#2563eb); }
+    .card-banner.gold   { background:linear-gradient(135deg,#78350f,#d97706); }
+    .card-avatar { position:absolute; bottom:-26px; left:14px; width:54px; height:54px; border-radius:50%; border:3px solid var(--surface); background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:var(--accent); overflow:hidden; }
+    .card-avatar img { width:100%; height:100%; object-fit:cover; }
+    .card-verified { position:absolute; top:8px; right:10px; background:rgba(0,0,0,0.45); border-radius:20px; padding:2px 7px; font-size:10px; color:#86efac; font-family:var(--mono); display:none; }
+    .card-verified.show { display:block; }
+    .card-body { padding:36px 14px 14px; }
+    .card-name { font-size:16px; font-weight:600; color:var(--text); letter-spacing:-0.02em; }
+    .card-handle { font-family:var(--mono); font-size:11px; color:var(--accent); margin:2px 0 8px; }
+    .card-bio { font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:10px; }
+    .card-links { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .card-link { font-size:11px; color:var(--muted); }
+    .card-npub { font-family:var(--mono); font-size:8.5px; color:var(--muted); background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:5px 8px; word-break:break-all; margin-bottom:10px; cursor:pointer; transition:border-color 0.15s; }
+    .card-npub:hover { border-color:var(--accent); }
+    .card-npub.copied { border-color:var(--green); color:var(--green); }
+    .card-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+    .tag { font-family:var(--mono); font-size:9px; padding:2px 7px; border-radius:20px; background:var(--surface2); border:1px solid var(--border); color:var(--accent); }
+    .card-actions { display:flex; gap:7px; margin-bottom:12px; }
+    .btn-zap { flex:1; padding:7px 0; background:transparent; border:1px solid var(--border2); border-radius:var(--rs); color:var(--gold); font-family:var(--sans); font-size:12px; font-weight:500; cursor:pointer; }
+    .btn-follow { flex:2; padding:7px 0; background:var(--accent2); border:none; border-radius:var(--rs); color:#fff; font-family:var(--sans); font-size:12px; font-weight:500; cursor:pointer; }
+    .card-stats { display:flex; border-top:1px solid var(--border); padding-top:12px; }
+    .stat { flex:1; text-align:center; }
+    .stat:not(:last-child) { border-right:1px solid var(--border); }
+    .stat-num { font-size:14px; font-weight:600; color:var(--text); }
+    .stat-label { font-size:9px; color:var(--muted); font-family:var(--mono); }
 
-    .card-verified {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      background: rgba(0,0,0,0.45);
-      border-radius: 20px;
-      padding: 3px 8px;
-      font-size: 11px;
-      color: #86efac;
-      font-family: var(--mono);
-      display: none;
-    }
-    .card-verified.show { display: block; }
+    /* payment QR on preview card */
+    .card-pay-qrs { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .card-pay-qr { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .card-pay-qr-box { background:#fff; border-radius:5px; padding:4px; width:58px; height:58px; display:flex; align-items:center; justify-content:center; }
+    .card-pay-qr-box canvas, .card-pay-qr-box img { width:50px !important; height:50px !important; }
+    .card-pay-qr-name { font-family:var(--mono); font-size:9px; color:var(--muted); }
 
-    .card-body { padding: 44px 18px 18px; }
-    .card-name { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
-    .card-handle { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 2px; margin-bottom: 10px; }
-    .card-bio { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
-    .card-npub {
-      font-family: var(--mono);
-      font-size: 9.5px;
-      color: var(--muted);
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 7px 10px;
-      word-break: break-all;
-      margin-bottom: 14px;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .card-npub:hover { border-color: var(--accent); }
-    .card-npub.copied { border-color: #4ade80; color: #4ade80; }
-
-    .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-    .tag {
-      font-family: var(--mono);
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 20px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--accent);
-    }
-
-    .card-actions { display: flex; gap: 8px; margin-bottom: 16px; }
-    .btn-zap {
-      flex: 1;
-      padding: 8px 0;
-      background: transparent;
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--gold);
-      font-family: var(--sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-zap:hover { background: rgba(245,158,11,0.08); }
-    .btn-follow {
-      flex: 2;
-      padding: 8px 0;
-      background: var(--accent2);
-      border: none;
-      border-radius: var(--radius-sm);
-      color: #fff;
-      font-family: var(--sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-follow:hover { background: #6d28d9; }
-
-    .card-stats { display: flex; border-top: 1px solid var(--border); padding-top: 14px; }
-    .stat { flex: 1; text-align: center; }
-    .stat:not(:last-child) { border-right: 1px solid var(--border); }
-    .stat-num { font-size: 15px; font-weight: 600; color: var(--text); }
-    .stat-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
-
-    .card-links { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-    .card-link { font-size: 11px; color: var(--muted); text-decoration: none; }
-    .card-link:hover { color: var(--accent); }
-
-    /* ── QR Panel ── */
-    .qr-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-      display: none;
-    }
-    .qr-panel.show { display: block; }
-    .qr-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .qr-panel-header span {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .qr-tabs { display: flex; gap: 6px; }
-    .qr-tab {
-      font-family: var(--mono);
-      font-size: 10px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .qr-tab.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
-    .qr-display {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-    #qrCanvas {
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px;
-      width: 160px;
-      height: 160px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #qrCanvas canvas, #qrCanvas img { width: 140px !important; height: 140px !important; }
-    .qr-value {
-      font-family: var(--mono);
-      font-size: 9px;
-      color: var(--muted);
-      text-align: center;
-      word-break: break-all;
-      max-width: 200px;
-    }
-    .btn-qr-download {
-      font-family: var(--sans);
-      font-size: 12px;
-      padding: 6px 14px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-qr-download:hover { background: var(--border); }
-
-    /* ── Form ── */
-    .form-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-    .form-section h2 {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-family: var(--mono);
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .field { margin-bottom: 16px; }
-    .field:last-child { margin-bottom: 0; }
-    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
-    .field input, .field textarea {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 9px 12px;
-      color: var(--text);
-      font-family: var(--sans);
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .field input:focus, .field textarea:focus { border-color: var(--accent); }
-    .field input::placeholder, .field textarea::placeholder { color: var(--muted); opacity: 0.6; }
-    .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
-
-    .color-picker-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .swatch {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: transform 0.12s, border-color 0.12s;
-    }
-    .swatch:hover { transform: scale(1.1); }
-    .swatch.active { border-color: var(--text); transform: scale(1.1); }
-
-    /* ── Export section ── */
-    .export-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-    }
-    .export-section h2 {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-family: var(--mono);
-      margin-bottom: 16px;
-    }
-    .export-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .btn-export {
-      padding: 11px 14px;
-      border-radius: var(--radius-sm);
-      font-family: var(--sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      border: none;
-    }
-    .btn-export:active { transform: scale(0.98); }
-    .btn-primary { background: var(--accent2); color: #fff; }
-    .btn-primary:hover { background: #6d28d9; }
-    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
-    .btn-secondary:hover { background: var(--border); }
-    .btn-full { grid-column: 1 / -1; }
-
-    .json-preview {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 14px;
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-      overflow-x: auto;
-      white-space: pre;
-      margin-top: 16px;
-      max-height: 220px;
-      overflow-y: auto;
-      display: none;
-    }
-    .json-preview.show { display: block; }
+    /* ── Export buttons ── */
+    .export-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .btn-exp { padding:10px 12px; border-radius:var(--rs); font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; border:none; transition:background 0.15s,transform 0.1s; }
+    .btn-exp:active { transform:scale(0.97); }
+    .btn-pri { background:var(--accent2); color:#fff; }
+    .btn-pri:hover { background:#6d28d9; }
+    .btn-sec { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+    .btn-sec:hover { background:var(--border); }
+    .btn-full { grid-column:1/-1; }
+    .json-pre { background:var(--surface2); border:1px solid var(--border); border-radius:var(--rs); padding:12px; font-family:var(--mono); font-size:10px; color:var(--muted); overflow:auto; white-space:pre; margin-top:12px; max-height:200px; display:none; }
+    .json-pre.show { display:block; }
 
     /* ── Toast ── */
-    .toast {
-      position: fixed;
-      bottom: 28px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: #4ade80;
-      color: #052e16;
-      font-family: var(--mono);
-      font-size: 13px;
-      padding: 10px 20px;
-      border-radius: 20px;
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      z-index: 100;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--green); color:#052e16; font-family:var(--mono); font-size:12px; padding:9px 18px; border-radius:20px; opacity:0; transition:opacity 0.2s,transform 0.2s; pointer-events:none; z-index:200; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 24px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    footer p { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
+    /* ── PWA install banner ── */
+    #installBanner { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border2); padding:12px 20px; align-items:center; justify-content:space-between; gap:10px; z-index:100; flex-wrap:wrap; }
+    #installBanner p { font-size:13px; color:var(--text); }
+    #installBanner small { font-size:11px; color:var(--muted); display:block; }
+    .install-btns { display:flex; gap:8px; }
+    .btn-install { padding:8px 16px; background:var(--accent2); border:none; border-radius:var(--rs); color:#fff; font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; }
+    .btn-dismiss { padding:8px 12px; background:transparent; border:1px solid var(--border); border-radius:var(--rs); color:var(--muted); font-family:var(--sans); font-size:13px; cursor:pointer; }
 
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition: none !important; animation: none !important; }
-    }
+    footer { border-top:1px solid var(--border); padding:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+    footer p { font-family:var(--mono); font-size:10px; color:var(--muted); }
+    footer a { color:var(--accent); text-decoration:none; }
   </style>
 </head>
 <body>
 
 <header>
   <div class="logo">
-    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="11" cy="11" r="10" stroke="#a78bfa" stroke-width="1.5"/>
-      <circle cx="11" cy="9" r="3.5" stroke="#a78bfa" stroke-width="1.5"/>
-      <path d="M4.5 18c1-3 3.5-5 6.5-5s5.5 2 6.5 5" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
+    <svg viewBox="0 0 22 22" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="10" stroke="#a78bfa" stroke-width="1.5"/><circle cx="11" cy="9" r="3.5" stroke="#a78bfa" stroke-width="1.5"/><path d="M4.5 18c1-3 3.5-5 6.5-5s5.5 2 6.5 5" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/></svg>
     nostr card
   </div>
   <span class="header-tag">kind:0 builder</span>
 </header>
 
+<!-- Mobile tab bar -->
+<div class="tab-bar">
+  <button class="active" onclick="showTab('form',this)">✏️ Edit</button>
+  <button onclick="showTab('preview',this)">👁 Preview</button>
+</div>
+
 <main>
   <div class="hero">
     <h1>Your Nostr identity,<br>beautifully composed</h1>
-    <p>Build a profile card, generate a QR code, and export a valid kind:0 event ready to publish to any relay.</p>
+    <p>Build a profile card, add payment QRs, and export a valid kind:0 event.</p>
   </div>
 
   <div class="builder">
 
-    <!-- ── Preview col ── -->
-    <div class="preview-wrap">
-      <p class="preview-label">Live preview</p>
-      <div class="nostr-card" id="card">
+    <!-- ══ FORM COL (left on desktop, tab on mobile) ══ -->
+    <div class="form-col tab-pane active" id="tab-form">
+
+      <!-- Identity -->
+      <div class="box">
+        <div class="box-title">Identity</div>
+        <div class="field"><label>Display name</label><input type="text" id="fName" placeholder="Satoshi Nakamoto" oninput="update()"></div>
+        <div class="field"><label>NIP-05 handle</label><input type="text" id="fNip05" placeholder="you@yourdomain.com" oninput="update()"></div>
+        <div class="field"><label>npub (public key)</label><input type="text" id="fNpub" placeholder="npub1…" oninput="update()"></div>
+        <div class="field"><label>About</label><textarea id="fAbout" placeholder="Tell the world who you are…" oninput="update()"></textarea></div>
+      </div>
+
+      <!-- Media & links -->
+      <div class="box">
+        <div class="box-title">Media &amp; Links</div>
+        <div class="field"><label>Avatar URL</label><input type="url" id="fPicture" placeholder="https://…/avatar.gif" oninput="update()"></div>
+        <div class="field"><label>Banner URL</label><input type="url" id="fBanner" placeholder="https://…/banner.gif" oninput="update()"></div>
+        <div class="field"><label>Website</label><input type="url" id="fWebsite" placeholder="https://yoursite.com" oninput="update()"></div>
+        <div class="field"><label>Lightning address (lud16)</label><input type="text" id="fLnurl" placeholder="you@walletofsatoshi.com" oninput="update()"></div>
+      </div>
+
+      <!-- Payment QR codes -->
+      <div class="box">
+        <div class="box-title">Payment QR Codes</div>
+        <div class="field-row">
+          <div class="field"><label>Venmo username</label><input type="text" id="fVenmo" placeholder="@YourName" oninput="update()"></div>
+          <div class="field"><label>CashApp $cashtag</label><input type="text" id="fCashapp" placeholder="$YourName" oninput="update()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>PayPal username / link</label><input type="text" id="fPaypal" placeholder="paypal.me/YourName" oninput="update()"></div>
+          <div class="field"><label>Custom (label:value)</label><input type="text" id="fCustomPay" placeholder="Zelle:555-123-4567" oninput="update()"></div>
+        </div>
+        <div class="pay-qr-grid" id="payQrGrid">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- Style -->
+      <div class="box">
+        <div class="box-title">Style</div>
+        <div class="field">
+          <label>Banner accent (if no banner image)</label>
+          <div class="swatches">
+            <div class="swatch active" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)" onclick="setBanner(this,'')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#064e3b,#059669)" onclick="setBanner(this,'teal')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#7c2d12,#ea580c)" onclick="setBanner(this,'orange')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#831843,#db2777)" onclick="setBanner(this,'pink')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#1e3a5f,#2563eb)" onclick="setBanner(this,'blue')"></div>
+            <div class="swatch" style="background:linear-gradient(135deg,#78350f,#d97706)" onclick="setBanner(this,'gold')"></div>
+          </div>
+        </div>
+        <div class="field"><label>Interests (comma-separated)</label><input type="text" id="fInterests" placeholder="bitcoin, nostr, privacy" oninput="update()"></div>
+      </div>
+
+      <!-- Export -->
+      <div class="box">
+        <div class="box-title">Export</div>
+        <div class="export-grid">
+          <button class="btn-exp btn-pri" onclick="downloadJSON()">⬇ kind:0 JSON</button>
+          <button class="btn-exp btn-sec" onclick="toggleQR()">▦ Nostr QR</button>
+          <button class="btn-exp btn-sec" onclick="downloadShareableHTML()">↑ Shareable HTML</button>
+          <button class="btn-exp btn-sec" onclick="copyNak()">⎘ Copy nak cmd</button>
+          <button class="btn-exp btn-sec btn-full" onclick="toggleJSONPreview()">{ } Preview JSON</button>
+        </div>
+        <pre class="json-pre" id="jsonPre"></pre>
+
+        <!-- Nostr QR panel -->
+        <div class="qr-panel" id="qrPanel">
+          <div class="qr-panel-head">
+            <span>Nostr QR</span>
+            <div class="qr-tabs">
+              <button class="qr-tab active" onclick="setQRMode('npub',this)">npub</button>
+              <button class="qr-tab" onclick="setQRMode('nprofile',this)">nprofile</button>
+              <button class="qr-tab" onclick="setQRMode('lnurl',this)">⚡</button>
+            </div>
+          </div>
+          <div class="qr-body">
+            <div id="qrCanvas"></div>
+            <div class="qr-value" id="qrValue"></div>
+            <button class="btn-qr-dl" onclick="downloadQR()">Download PNG</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /form-col -->
+
+    <!-- ══ PREVIEW COL (right on desktop, tab on mobile) ══ -->
+    <div class="preview-col tab-pane" id="tab-preview">
+      <div class="preview-label">Live preview</div>
+      <div class="nostr-card">
         <div class="card-banner" id="cardBanner">
           <div class="card-avatar" id="cardAvatar">?</div>
           <div class="card-verified" id="cardVerified">✓ NIP-05</div>
@@ -506,7 +319,7 @@
           <div class="card-handle" id="cardHandle">@handle</div>
           <div class="card-bio" id="cardBio"></div>
           <div class="card-links" id="cardLinks"></div>
-          <div class="card-npub" id="cardNpub" title="Click to copy" onclick="copyNpub()">npub1… paste your public key below</div>
+          <div class="card-npub" id="cardNpub" title="Click to copy" onclick="copyNpub()">npub1…</div>
           <div class="card-tags" id="cardTags"></div>
           <div class="card-actions">
             <button class="btn-zap">⚡ Zap</button>
@@ -517,148 +330,53 @@
             <div class="stat"><div class="stat-num">—</div><div class="stat-label">following</div></div>
             <div class="stat"><div class="stat-num">—</div><div class="stat-label">notes</div></div>
           </div>
+          <!-- payment QRs on card -->
+          <div class="card-pay-qrs" id="cardPayQrs" style="display:none"></div>
         </div>
-      </div>
-
-      <!-- ── QR Panel ── -->
-      <div class="qr-panel" id="qrPanel">
-        <div class="qr-panel-header">
-          <span>QR Code</span>
-          <div class="qr-tabs">
-            <button class="qr-tab active" onclick="setQRMode('npub',this)">npub</button>
-            <button class="qr-tab" onclick="setQRMode('nprofile',this)">nprofile</button>
-            <button class="qr-tab" onclick="setQRMode('lnurl',this)">⚡ lnurl</button>
-          </div>
-        </div>
-        <div class="qr-display">
-          <div id="qrCanvas"></div>
-          <div class="qr-value" id="qrValue"></div>
-          <button class="btn-qr-download" onclick="downloadQR()">Download PNG</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Form col ── -->
-    <div>
-      <div class="form-section">
-        <h2>Identity</h2>
-        <div class="field">
-          <label>Display name</label>
-          <input type="text" id="fName" placeholder="Satoshi Nakamoto" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>NIP-05 handle (e.g. you@yourdomain.com)</label>
-          <input type="text" id="fNip05" placeholder="satoshi@bitcoin.org" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>npub (bech32 public key)</label>
-          <input type="text" id="fNpub" placeholder="npub1qqqq…" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>About</label>
-          <textarea id="fAbout" placeholder="Bitcoin creator. Building a peer-to-peer electronic cash system." oninput="update()"></textarea>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h2>Media &amp; links</h2>
-        <div class="field">
-          <label>Picture URL</label>
-          <input type="url" id="fPicture" placeholder="https://nostr.build/…/avatar.jpg" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>Banner image URL</label>
-          <input type="url" id="fBanner" placeholder="https://nostr.build/…/banner.jpg" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>Website</label>
-          <input type="url" id="fWebsite" placeholder="https://yoursite.com" oninput="update()" />
-        </div>
-        <div class="field">
-          <label>Lightning address (lud16)</label>
-          <input type="text" id="fLnurl" placeholder="you@walletofsatoshi.com" oninput="update()" />
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h2>Style</h2>
-        <div class="field">
-          <label>Banner accent (if no banner image)</label>
-          <div class="color-picker-row">
-            <div class="swatch active" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)" data-cls="" onclick="setBanner(this,'')"></div>
-            <div class="swatch" style="background:linear-gradient(135deg,#064e3b,#059669)" data-cls="teal" onclick="setBanner(this,'teal')"></div>
-            <div class="swatch" style="background:linear-gradient(135deg,#7c2d12,#ea580c)" data-cls="orange" onclick="setBanner(this,'orange')"></div>
-            <div class="swatch" style="background:linear-gradient(135deg,#831843,#db2777)" data-cls="pink" onclick="setBanner(this,'pink')"></div>
-            <div class="swatch" style="background:linear-gradient(135deg,#1e3a5f,#2563eb)" data-cls="blue" onclick="setBanner(this,'blue')"></div>
-            <div class="swatch" style="background:linear-gradient(135deg,#78350f,#d97706)" data-cls="gold" onclick="setBanner(this,'gold')"></div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Interests (comma-separated)</label>
-          <input type="text" id="fInterests" placeholder="bitcoin, nostr, privacy, freedom" oninput="update()" />
-        </div>
-      </div>
-
-      <div class="export-section">
-        <h2>Export</h2>
-        <div class="export-grid">
-          <button class="btn-export btn-primary" onclick="downloadJSON()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            kind:0 JSON
-          </button>
-          <button class="btn-export btn-secondary" onclick="toggleQR()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="4" height="4"/></svg>
-            QR code
-          </button>
-          <button class="btn-export btn-secondary" onclick="downloadShareableHTML()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Shareable HTML
-          </button>
-          <button class="btn-export btn-secondary" onclick="copyNstrpub()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            Copy for nak
-          </button>
-          <button class="btn-export btn-secondary btn-full" onclick="togglePreviewJSON()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Preview JSON
-          </button>
-        </div>
-        <pre class="json-preview" id="jsonPreview"></pre>
       </div>
     </div>
 
   </div>
 </main>
 
-<!-- PWA install banner (shown by JS when browser fires beforeinstallprompt) -->
-<div id="installBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#17112a;border-top:1px solid #4a3d80;padding:14px 24px;align-items:center;justify-content:space-between;gap:12px;z-index:50;flex-wrap:wrap;">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <svg width="28" height="28" viewBox="0 0 22 22" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="10" stroke="#a78bfa" stroke-width="1.5"/><circle cx="11" cy="9" r="3.5" stroke="#a78bfa" stroke-width="1.5"/><path d="M4.5 18c1-3 3.5-5 6.5-5s5.5 2 6.5 5" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/></svg>
-    <div>
-      <div style="font-size:14px;font-weight:600;color:#e8e0ff;">Add Nostr Card to Home Screen</div>
-      <div style="font-size:12px;color:#8878b8;">Works offline · No app store needed</div>
-    </div>
+<!-- PWA install banner -->
+<div id="installBanner">
+  <div>
+    <p>Add Nostr Card to Home Screen</p>
+    <small>Works offline · No app store needed</small>
   </div>
-  <div style="display:flex;gap:8px;">
-    <button id="installDismiss" style="padding:8px 14px;background:transparent;border:1px solid #2e2550;border-radius:8px;color:#8878b8;font-family:'Space Grotesk',sans-serif;font-size:13px;cursor:pointer;">Not now</button>
-    <button id="installBtn" style="padding:8px 18px;background:#7c3aed;border:none;border-radius:8px;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">Install</button>
+  <div class="install-btns">
+    <button class="btn-dismiss" id="installDismiss">Not now</button>
+    <button class="btn-install" id="installBtn">Install</button>
   </div>
 </div>
 
 <footer>
-  <p>Built for the Nostr community · <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noopener">nostr protocol</a> · kind:0</p>
+  <p>Built for the Nostr community · <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noopener">nostr protocol</a></p>
   <p>Open source · free forever</p>
 </footer>
 
 <div class="toast" id="toast"></div>
 
 <script>
+  /* ── state ── */
   let bannerClass = '';
   let qrMode = 'npub';
-  let qrInstance = null;
 
-  function val(id) { return document.getElementById(id).value.trim(); }
+  /* ── helpers ── */
+  const $ = id => document.getElementById(id);
+  const val = id => $(id).value.trim();
+  const initials = n => n ? n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
 
+  /* ── mobile tabs ── */
+  function showTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    $('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── main update ── */
   function update() {
     const name     = val('fName');
     const nip05    = val('fNip05');
@@ -670,220 +388,260 @@
     const lnurl    = val('fLnurl');
     const interests = val('fInterests');
 
-    document.getElementById('cardName').textContent = name || 'Your Name';
+    $('cardName').textContent = name || 'Your Name';
 
     if (nip05) {
-      document.getElementById('cardHandle').textContent = nip05.includes('@') ? nip05 : '@' + nip05;
-      document.getElementById('cardVerified').classList.add('show');
+      $('cardHandle').textContent = nip05.includes('@') ? nip05 : '@' + nip05;
+      $('cardVerified').classList.add('show');
     } else {
-      document.getElementById('cardHandle').textContent = '@handle';
-      document.getElementById('cardVerified').classList.remove('show');
+      $('cardHandle').textContent = '@handle';
+      $('cardVerified').classList.remove('show');
     }
 
-    document.getElementById('cardBio').textContent = about;
+    $('cardBio').textContent = about;
 
-    const npubEl = document.getElementById('cardNpub');
-    npubEl.textContent = npub || 'npub1… paste your public key below';
+    const npubEl = $('cardNpub');
+    npubEl.textContent = npub || 'npub1…';
     npubEl.classList.remove('copied');
 
-    const avatarEl = document.getElementById('cardAvatar');
+    // avatar
+    const av = $('cardAvatar');
     if (picture) {
       const img = new Image();
-      img.onload = () => {
-        avatarEl.innerHTML = '';
-        const el = document.createElement('img');
-        el.src = picture; el.alt = name || 'avatar';
-        avatarEl.appendChild(el);
-      };
-      img.onerror = () => {
-        avatarEl.textContent = initials(name);
-      };
+      img.onload = () => { av.innerHTML = ''; const el=document.createElement('img'); el.src=picture; el.alt=name; av.appendChild(el); };
+      img.onerror = () => { av.textContent = initials(name); };
       img.src = picture;
     } else {
-      avatarEl.textContent = initials(name);
+      av.textContent = initials(name);
     }
 
-    const bannerEl = document.getElementById('cardBanner');
+    // banner
+    const bn = $('cardBanner');
     if (banner) {
-      bannerEl.style.backgroundImage = `url(${banner})`;
-      bannerEl.style.backgroundSize = 'cover';
-      bannerEl.style.backgroundPosition = 'center';
+      bn.style.backgroundImage = `url(${banner})`;
+      bn.style.backgroundSize = 'cover';
+      bn.style.backgroundPosition = 'center';
     } else {
-      bannerEl.style.backgroundImage = '';
-      bannerEl.style.backgroundSize = '';
-      bannerEl.className = 'card-banner' + (bannerClass ? ' ' + bannerClass : '');
+      bn.style.backgroundImage = '';
+      bn.className = 'card-banner' + (bannerClass ? ' '+bannerClass : '');
     }
 
-    const linksEl = document.getElementById('cardLinks');
+    // links
+    const linksEl = $('cardLinks');
     linksEl.innerHTML = '';
-    if (website) {
-      const a = document.createElement('a');
-      a.className = 'card-link'; a.href = '#';
-      a.textContent = '🌐 ' + website.replace(/^https?:\/\//, '');
-      linksEl.appendChild(a);
-    }
-    if (lnurl) {
-      const a = document.createElement('a');
-      a.className = 'card-link'; a.href = '#';
-      a.textContent = '⚡ ' + lnurl;
-      linksEl.appendChild(a);
-    }
+    if (website) { const s=document.createElement('span'); s.className='card-link'; s.textContent='🌐 '+website.replace(/^https?:\/\//,''); linksEl.appendChild(s); }
+    if (lnurl)   { const s=document.createElement('span'); s.className='card-link'; s.textContent='⚡ '+lnurl; linksEl.appendChild(s); }
 
-    const tagsEl = document.getElementById('cardTags');
+    // tags
+    const tagsEl = $('cardTags');
     tagsEl.innerHTML = '';
     if (interests) {
       interests.split(',').map(t=>t.trim()).filter(Boolean).slice(0,8).forEach(t => {
-        const span = document.createElement('span');
-        span.className = 'tag'; span.textContent = '#' + t;
-        tagsEl.appendChild(span);
+        const sp=document.createElement('span'); sp.className='tag'; sp.textContent='#'+t; tagsEl.appendChild(sp);
       });
     }
 
-    if (document.getElementById('jsonPreview').classList.contains('show')) {
-      document.getElementById('jsonPreview').textContent = buildJSON(true);
-    }
+    // payment QRs
+    updatePaymentQRs();
 
-    if (document.getElementById('qrPanel').classList.contains('show')) {
-      renderQR();
-    }
+    // refresh panels if open
+    if ($('jsonPre').classList.contains('show')) $('jsonPre').textContent = buildJSON(true);
+    if ($('qrPanel').classList.contains('show')) renderNostrQR();
   }
 
-  function initials(name) {
-    return name ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
+  /* ── payment QR helpers ── */
+  const PAY_CONFIGS = [
+    { id:'fVenmo',   label:'Venmo',   prefix:'venmo://paycharge?txn=pay&recipients=', clean: v => v.replace(/^@/,'') },
+    { id:'fCashapp', label:'CashApp', prefix:'https://cash.app/', clean: v => v.startsWith('$') ? v : '$'+v },
+    { id:'fPaypal',  label:'PayPal',  prefix:'https://paypal.me/', clean: v => v.replace(/^https?:\/\/paypal\.me\//,'') },
+    { id:'fCustomPay', label:null,    prefix:'', clean: v => v },
+  ];
+
+  function getPayEntries() {
+    return PAY_CONFIGS.map(cfg => {
+      const raw = val(cfg.id);
+      if (!raw) return null;
+      if (cfg.id === 'fCustomPay') {
+        const parts = raw.split(':');
+        const label = parts[0].trim();
+        const value = parts.slice(1).join(':').trim();
+        return value ? { label, value, qrValue: value } : null;
+      }
+      const cleaned = cfg.clean(raw);
+      return { label: cfg.label, value: cleaned, qrValue: cfg.prefix + cleaned };
+    }).filter(Boolean);
   }
 
+  function makeQRDiv(qrValue, containerId, size) {
+    const div = document.createElement('div');
+    div.id = containerId;
+    div.style.cssText = `background:#fff;border-radius:5px;padding:4px;width:${size+8}px;height:${size+8}px;display:flex;align-items:center;justify-content:center;`;
+    setTimeout(() => {
+      try {
+        new QRCode(div, { text: qrValue, width: size, height: size, colorDark:'#0e0a1a', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
+      } catch(e) { div.textContent='QR err'; }
+    }, 0);
+    return div;
+  }
+
+  function updatePaymentQRs() {
+    const entries = getPayEntries();
+
+    // big QR grid in form
+    const grid = $('payQrGrid');
+    grid.innerHTML = '';
+    entries.forEach((entry, i) => {
+      const card = document.createElement('div');
+      card.className = 'pay-qr-card';
+      const lbl = document.createElement('div'); lbl.className = 'pay-qr-label'; lbl.textContent = entry.label;
+      const qrBox = makeQRDiv(entry.qrValue, 'payqr_big_'+i, 88);
+      qrBox.className = 'pay-qr-canvas';
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'btn-dl-qr';
+      dlBtn.textContent = '⬇ PNG';
+      dlBtn.onclick = () => downloadPayQR('payqr_big_'+i, entry.label);
+      card.appendChild(lbl); card.appendChild(qrBox); card.appendChild(dlBtn);
+      grid.appendChild(card);
+    });
+
+    // small QRs on preview card
+    const cardQrs = $('cardPayQrs');
+    cardQrs.innerHTML = '';
+    if (entries.length === 0) { cardQrs.style.display='none'; return; }
+    cardQrs.style.display = 'flex';
+    entries.forEach((entry, i) => {
+      const wrap = document.createElement('div'); wrap.className = 'card-pay-qr';
+      const box  = makeQRDiv(entry.qrValue, 'payqr_sm_'+i, 50);
+      box.className = 'card-pay-qr-box';
+      const lbl  = document.createElement('div'); lbl.className = 'card-pay-qr-name'; lbl.textContent = entry.label;
+      wrap.appendChild(box); wrap.appendChild(lbl);
+      cardQrs.appendChild(wrap);
+    });
+  }
+
+  function downloadPayQR(containerId, label) {
+    setTimeout(() => {
+      const canvas = document.querySelector('#'+containerId+' canvas');
+      if (!canvas) { showToast('QR not ready yet'); return; }
+      const a = document.createElement('a');
+      a.download = (label || 'payment') + '-qr.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      showToast(label + ' QR downloaded ✓');
+    }, 100);
+  }
+
+  /* ── banner swatch ── */
   function setBanner(el, cls) {
-    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
     el.classList.add('active');
     bannerClass = cls;
-    const bannerEl = document.getElementById('cardBanner');
     if (!val('fBanner')) {
-      bannerEl.style.backgroundImage = '';
-      bannerEl.className = 'card-banner' + (cls ? ' ' + cls : '');
+      const bn=$('cardBanner'); bn.style.backgroundImage='';
+      bn.className = 'card-banner'+(cls?' '+cls:'');
     }
   }
 
+  /* ── build content obj ── */
   function buildContentObj() {
-    const obj = {};
-    const name    = val('fName');
-    const nip05   = val('fNip05');
-    const about   = val('fAbout');
-    const picture = val('fPicture');
-    const banner  = val('fBanner');
-    const website = val('fWebsite');
-    const lnurl   = val('fLnurl');
-    const interests = val('fInterests');
-
-    if (name)      { obj.name = name; obj.display_name = name; }
-    if (nip05)     obj.nip05 = nip05;
-    if (about)     obj.about = about;
-    if (picture)   obj.picture = picture;
-    if (banner)    obj.banner = banner;
-    if (website)   obj.website = website;
-    if (lnurl)     obj.lud16 = lnurl;
-    if (interests) obj.interests = interests;
-    return obj;
+    const o = {};
+    const name=val('fName'),nip05=val('fNip05'),about=val('fAbout'),picture=val('fPicture'),
+          banner=val('fBanner'),website=val('fWebsite'),lnurl=val('fLnurl'),interests=val('fInterests');
+    if(name)     { o.name=name; o.display_name=name; }
+    if(nip05)    o.nip05=nip05;
+    if(about)    o.about=about;
+    if(picture)  o.picture=picture;
+    if(banner)   o.banner=banner;
+    if(website)  o.website=website;
+    if(lnurl)    o.lud16=lnurl;
+    if(interests)o.interests=interests;
+    return o;
   }
 
   function buildJSON(pretty) {
-    const content = buildContentObj();
-    const npub = val('fNpub');
-    const event = {
-      kind: 0,
-      pubkey: npub || '<your-hex-pubkey>',
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [],
-      content: JSON.stringify(content),
-    };
-    return pretty ? JSON.stringify(event, null, 2) : JSON.stringify(event);
+    const event = { kind:0, pubkey:val('fNpub')||'<your-hex-pubkey>', created_at:Math.floor(Date.now()/1000), tags:[], content:JSON.stringify(buildContentObj()) };
+    return pretty ? JSON.stringify(event,null,2) : JSON.stringify(event);
   }
 
+  /* ── exports ── */
   function downloadJSON() {
-    const blob = new Blob([buildJSON(true)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'nostr-kind0.json';
-    a.click();
+    const blob=new Blob([buildJSON(true)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nostr-kind0.json'; a.click();
     showToast('kind:0 JSON downloaded ✓');
   }
 
-  function togglePreviewJSON() {
-    const el = document.getElementById('jsonPreview');
-    if (el.classList.contains('show')) { el.classList.remove('show'); }
-    else { el.textContent = buildJSON(true); el.classList.add('show'); }
+  function toggleJSONPreview() {
+    const el=$('jsonPre');
+    if(el.classList.contains('show')) el.classList.remove('show');
+    else { el.textContent=buildJSON(true); el.classList.add('show'); }
   }
 
-  /* ── QR ── */
   function toggleQR() {
-    const panel = document.getElementById('qrPanel');
-    if (panel.classList.contains('show')) {
-      panel.classList.remove('show');
-    } else {
-      panel.classList.add('show');
-      renderQR();
-    }
+    const p=$('qrPanel');
+    if(p.classList.contains('show')) p.classList.remove('show');
+    else { p.classList.add('show'); renderNostrQR(); }
   }
 
   function setQRMode(mode, btn) {
-    qrMode = mode;
-    document.querySelectorAll('.qr-tab').forEach(t => t.classList.remove('active'));
+    qrMode=mode;
+    document.querySelectorAll('.qr-tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
-    renderQR();
+    renderNostrQR();
   }
 
-  function getQRValue() {
-    const npub  = val('fNpub');
-    const lnurl = val('fLnurl');
-    const nip05 = val('fNip05');
-    if (qrMode === 'npub')     return npub  || 'npub1…';
-    if (qrMode === 'lnurl')    return lnurl ? 'lightning:' + lnurl : 'no lightning address set';
-    if (qrMode === 'nprofile') {
-      if (npub) return 'nostr:' + npub;
-      return 'npub1…';
-    }
-    return npub || 'npub1…';
+  function getNostrQRValue() {
+    const npub=val('fNpub'), lnurl=val('fLnurl');
+    if(qrMode==='npub')     return npub||'npub1…';
+    if(qrMode==='lnurl')    return lnurl ? 'lightning:'+lnurl : 'no lightning address set';
+    if(qrMode==='nprofile') return npub ? 'nostr:'+npub : 'npub1…';
+    return npub||'npub1…';
   }
 
-  function renderQR() {
-    const qrVal = getQRValue();
-    document.getElementById('qrValue').textContent = qrVal;
-    const container = document.getElementById('qrCanvas');
-    container.innerHTML = '';
-    try {
-      new QRCode(container, {
-        text: qrVal,
-        width: 140,
-        height: 140,
-        colorDark: '#0e0a1a',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    } catch(e) {
-      container.textContent = 'QR unavailable';
-    }
+  function renderNostrQR() {
+    const qrVal=getNostrQRValue();
+    $('qrValue').textContent=qrVal;
+    const c=$('qrCanvas'); c.innerHTML='';
+    try { new QRCode(c,{text:qrVal,width:116,height:116,colorDark:'#0e0a1a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); }
+    catch(e){ c.textContent='QR unavailable'; }
   }
 
   function downloadQR() {
-    const canvas = document.querySelector('#qrCanvas canvas');
-    if (!canvas) { showToast('Generate a QR first'); return; }
-    const a = document.createElement('a');
-    a.download = 'nostr-qr-' + qrMode + '.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
-    showToast('QR PNG downloaded ✓');
+    const canvas=document.querySelector('#qrCanvas canvas');
+    if(!canvas){showToast('Generate a QR first');return;}
+    const a=document.createElement('a'); a.download='nostr-qr-'+qrMode+'.png'; a.href=canvas.toDataURL('image/png'); a.click();
+    showToast('QR downloaded ✓');
   }
 
-  /* ── Shareable HTML ── */
-  function buildShareableHTML() {
-    const name     = val('fName') || 'Nostr User';
-    const nip05    = val('fNip05');
-    const npub     = val('fNpub');
-    const about    = val('fAbout');
-    const picture  = val('fPicture');
-    const banner   = val('fBanner');
-    const website  = val('fWebsite');
-    const lnurl    = val('fLnurl');
-    const interests = val('fInterests');
+  /* ── shareable HTML ── */
+  function bannerGradient() {
+    const m={'':'background:linear-gradient(135deg,#4c1d95,#7c3aed);',teal:'background:linear-gradient(135deg,#064e3b,#059669);',orange:'background:linear-gradient(135deg,#7c2d12,#ea580c);',pink:'background:linear-gradient(135deg,#831843,#db2777);',blue:'background:linear-gradient(135deg,#1e3a5f,#2563eb);',gold:'background:linear-gradient(135deg,#78350f,#d97706);'};
+    return m[bannerClass]||m[''];
+  }
+
+  function buildPayQRsHTML() {
+    const entries = getPayEntries();
+    if (!entries.length) return '';
+    const qrItems = entries.map(e =>
+      `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div id="shareqr_${e.label}" style="background:#fff;border-radius:5px;padding:4px;width:70px;height:70px;display:flex;align-items:center;justify-content:center;"></div>
+        <div style="font-family:monospace;font-size:9px;color:#8878b8;">${e.label}</div>
+      </div>`
+    ).join('');
+    const initScripts = entries.map((e,i) =>
+      `new QRCode(document.getElementById('shareqr_${e.label}'),{text:${JSON.stringify(e.qrValue)},width:62,height:62,colorDark:'#0e0a1a',colorLight:'#ffffff'});`
+    ).join('\n');
+    return `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #2e2550;">
+      ${qrItems}
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+    <script>window.addEventListener('load',function(){${initScripts}});<\/script>`;
+  }
+
+  function downloadShareableHTML() {
+    const name=val('fName')||'Nostr User', nip05=val('fNip05'), npub=val('fNpub'),
+          about=val('fAbout'), picture=val('fPicture'), banner=val('fBanner'),
+          website=val('fWebsite'), lnurl=val('fLnurl'), interests=val('fInterests');
 
     const bannerStyle = banner
       ? `background-image:url('${banner}');background-size:cover;background-position:center;`
@@ -899,147 +657,93 @@
       : '';
 
     const linksHTML = [
-      website ? `<a href="${website}" style="font-size:12px;color:#8878b8;text-decoration:none;">🌐 ${website.replace(/^https?:\/\//,'')}</a>` : '',
-      lnurl   ? `<span style="font-size:12px;color:#8878b8;">⚡ ${lnurl}</span>` : ''
+      website?`<a href="${website}" style="font-size:12px;color:#8878b8;text-decoration:none;">🌐 ${website.replace(/^https?:\/\//,'')}</a>`:'',
+      lnurl  ?`<span style="font-size:12px;color:#8878b8;">⚡ ${lnurl}</span>`:''
     ].filter(Boolean).join('');
 
     const nip05HTML = nip05
       ? `<div style="font-family:monospace;font-size:12px;color:#a78bfa;margin:2px 0 10px;">${nip05} <span style="background:rgba(0,0,0,0.4);border-radius:20px;padding:2px 6px;font-size:10px;color:#86efac;">✓ NIP-05</span></div>`
       : `<div style="font-family:monospace;font-size:12px;color:#a78bfa;margin:2px 0 10px;">@handle</div>`;
 
-    return `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${name} — Nostr Profile</title>
-<meta name="description" content="${about || 'Nostr profile card'}">
+<meta name="description" content="${about||'Nostr profile card'}">
 <meta property="og:title" content="${name}">
-<meta property="og:description" content="${about || ''}">
-${picture ? `<meta property="og:image" content="${picture}">` : ''}
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#0e0a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;padding:20px;}
-</style>
+${picture?`<meta property="og:image" content="${picture}">`:''}
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{background:#0e0a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;padding:20px;}</style>
 </head>
 <body>
 <div style="background:#17112a;border:1px solid #2e2550;border-radius:12px;overflow:hidden;width:100%;max-width:360px;">
   <div style="height:88px;${bannerStyle}position:relative;">
-    <div style="position:absolute;bottom:-30px;left:18px;width:62px;height:62px;border-radius:50%;border:3px solid #17112a;background:#211940;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      ${avatarHTML}
-    </div>
+    <div style="position:absolute;bottom:-30px;left:18px;width:62px;height:62px;border-radius:50%;border:3px solid #17112a;background:#211940;display:flex;align-items:center;justify-content:center;overflow:hidden;">${avatarHTML}</div>
   </div>
   <div style="padding:44px 18px 18px;">
     <div style="font-size:18px;font-weight:600;color:#e8e0ff;letter-spacing:-0.02em;">${name}</div>
     ${nip05HTML}
-    ${about ? `<div style="font-size:13px;color:#8878b8;line-height:1.5;margin-bottom:12px;">${about}</div>` : ''}
-    ${linksHTML ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">${linksHTML}</div>` : ''}
-    ${npub ? `<div style="font-family:monospace;font-size:9.5px;color:#8878b8;background:#211940;border:1px solid #2e2550;border-radius:8px;padding:7px 10px;word-break:break-all;margin-bottom:14px;">${npub}</div>` : ''}
-    ${tagsHTML ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">${tagsHTML}</div>` : ''}
+    ${about?`<div style="font-size:13px;color:#8878b8;line-height:1.5;margin-bottom:12px;">${about}</div>`:''}
+    ${linksHTML?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">${linksHTML}</div>`:''}
+    ${npub?`<div style="font-family:monospace;font-size:9.5px;color:#8878b8;background:#211940;border:1px solid #2e2550;border-radius:8px;padding:7px 10px;word-break:break-all;margin-bottom:14px;">${npub}</div>`:''}
+    ${tagsHTML?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">${tagsHTML}</div>`:''}
     <div style="display:flex;gap:8px;margin-bottom:16px;">
-      <button style="flex:1;padding:8px 0;background:transparent;border:1px solid #4a3d80;border-radius:8px;color:#f59e0b;font-size:13px;font-weight:500;cursor:pointer;">⚡ Zap</button>
-      <button style="flex:2;padding:8px 0;background:#7c3aed;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;cursor:pointer;">Follow</button>
+      <button style="flex:1;padding:8px 0;background:transparent;border:1px solid #4a3d80;border-radius:8px;color:#f59e0b;font-size:13px;cursor:pointer;">⚡ Zap</button>
+      <button style="flex:2;padding:8px 0;background:#7c3aed;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;">Follow</button>
     </div>
     <div style="border-top:1px solid #2e2550;padding-top:14px;display:flex;">
       <div style="flex:1;text-align:center;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">followers</div></div>
       <div style="flex:1;text-align:center;border-left:1px solid #2e2550;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">following</div></div>
       <div style="flex:1;text-align:center;border-left:1px solid #2e2550;"><div style="font-size:15px;font-weight:600;color:#e8e0ff;">—</div><div style="font-size:10px;color:#8878b8;font-family:monospace;">notes</div></div>
     </div>
+    ${buildPayQRsHTML()}
   </div>
 </div>
-</body>
-</html>`;
-  }
+</body></html>`;
 
-  function bannerGradient() {
-    const map = {
-      '':       'background:linear-gradient(135deg,#4c1d95,#7c3aed);',
-      'teal':   'background:linear-gradient(135deg,#064e3b,#059669);',
-      'orange': 'background:linear-gradient(135deg,#7c2d12,#ea580c);',
-      'pink':   'background:linear-gradient(135deg,#831843,#db2777);',
-      'blue':   'background:linear-gradient(135deg,#1e3a5f,#2563eb);',
-      'gold':   'background:linear-gradient(135deg,#78350f,#d97706);',
-    };
-    return map[bannerClass] || map[''];
-  }
-
-  function downloadShareableHTML() {
-    const html = buildShareableHTML();
-    const blob = new Blob([html], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = (val('fName') || 'nostr') + '-card.html';
-    a.click();
+    const blob=new Blob([html],{type:'text/html'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(val('fName')||'nostr')+'-card.html'; a.click();
     showToast('Shareable HTML downloaded ✓');
   }
 
   function copyNpub() {
-    const npub = val('fNpub');
-    if (!npub) return;
-    navigator.clipboard.writeText(npub).then(() => {
-      document.getElementById('cardNpub').classList.add('copied');
-      showToast('npub copied ✓');
-      setTimeout(() => document.getElementById('cardNpub').classList.remove('copied'), 2000);
-    });
+    const npub=val('fNpub'); if(!npub) return;
+    navigator.clipboard.writeText(npub).then(()=>{ $('cardNpub').classList.add('copied'); showToast('npub copied ✓'); setTimeout(()=>$('cardNpub').classList.remove('copied'),2000); });
   }
 
-  function copyNstrpub() {
-    const content = buildContentObj();
-    const cmd = `nak event --kind 0 --content '${JSON.stringify(content).replace(/'/g,"\\'")}' wss://relay.damus.io wss://relay.nostr.band`;
-    navigator.clipboard.writeText(cmd).then(() => showToast('nak command copied ✓'));
+  function copyNak() {
+    const content=buildContentObj();
+    const cmd=`nak event --kind 0 --content '${JSON.stringify(content).replace(/'/g,"\\'")}' wss://relay.damus.io wss://relay.nostr.band`;
+    navigator.clipboard.writeText(cmd).then(()=>showToast('nak command copied ✓'));
   }
 
   function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+    const t=$('toast'); t.textContent=msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2500);
   }
 </script>
 
 <script>
-  // ── PWA: register service worker ──
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('SW registered', reg.scope))
-        .catch(err => console.warn('SW registration failed', err));
+  if('serviceWorker' in navigator) {
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('/nostr-card/sw.js')
+        .then(r=>console.log('SW:',r.scope)).catch(e=>console.warn('SW fail',e));
     });
   }
-
-  // ── PWA: install prompt banner ──
-  let deferredPrompt = null;
-  const installBanner = document.getElementById('installBanner');
-  const installBtn    = document.getElementById('installBtn');
-  const installDismiss = document.getElementById('installDismiss');
-
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (installBanner) installBanner.style.display = 'flex';
+  let deferredPrompt=null;
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault(); deferredPrompt=e;
+    $('installBanner').style.display='flex';
   });
-
-  if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      installBanner.style.display = 'none';
-      if (outcome === 'accepted') showToast('App installed ✓');
-    });
-  }
-
-  if (installDismiss) {
-    installDismiss.addEventListener('click', () => {
-      installBanner.style.display = 'none';
-    });
-  }
-
-  window.addEventListener('appinstalled', () => {
-    installBanner.style.display = 'none';
-    showToast('Nostr Card installed ✓');
+  $('installBtn').addEventListener('click',async()=>{
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const {outcome}=await deferredPrompt.userChoice;
+    deferredPrompt=null; $('installBanner').style.display='none';
+    if(outcome==='accepted') showToast('App installed ✓');
   });
+  $('installDismiss').addEventListener('click',()=>{ $('installBanner').style.display='none'; });
+  window.addEventListener('appinstalled',()=>{ $('installBanner').style.display='none'; showToast('Nostr Card installed ✓'); });
 </script>
 </body>
 </html>
